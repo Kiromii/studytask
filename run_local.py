@@ -14,5 +14,12 @@ def home():
     return send_from_directory(PUBLIC, "index.html")
 
 
+@app.get("/<path:filename>")
+def static_files(filename):
+    # Meniru folder /public Vercel: app.js, /vendor/react.production.min.js, dll.
+    # Rute /api/... yang didefinisikan di api/index.py tetap diprioritaskan Flask duluan.
+    return send_from_directory(PUBLIC, filename)
+
+
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
