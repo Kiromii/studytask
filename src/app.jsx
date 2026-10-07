@@ -82,6 +82,7 @@ function Auth({done,off}){
       <button className="btn pri py-3">{mode==="login"?"▶ MASUK":"▶ BUAT AKUN"}</button>
       {off&&<div className="opacity-60 text-center">demo mode: isi username/password bebas</div>}
     </form>
+    <a href="/" className="h text-[9px] mt-4 opacity-70">← BERANDA</a>
   </main>;
 }
 

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f0b1f">
+<title>StudyTask — Quest Board Mahasiswa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div id="root"><main class="grid place-items-center p-4" style="min-height:100dvh">
+  <form class="px p-6 w-full max-w-md grid gap-4" aria-hidden="true">
+    <h1 class="h logo text-xl sm:text-2xl text-center">STUDYTASK<span class="blink">_</span></h1>
+    <p class="text-center opacity-80">PRESS START — masuk untuk lanjut quest</p>
+    <div class="flex gap-2">
+      <button type="button" class="btn flex-1" style="background:var(--a1);color:var(--ink);border-color:var(--a1)">LOGIN</button>
+      <button type="button" class="btn flex-1">DAFTAR</button>
+    </div>
+    <input placeholder="username" disabled>
+    <input type="password" placeholder="password (min 6)" disabled>
+    <button type="button" class="btn pri py-3" disabled>▶ MASUK</button>
+  </form>
+  <a href="/" class="h text-[9px] mt-4" style="opacity:.7">← BERANDA</a>
+</main></div>
+<script src="/vendor/react.production.min.js" defer></script>
+<script src="/vendor/react-dom.production.min.js" defer></script>
+<script src="/app.js" defer></script>
+</body>
+</html>
