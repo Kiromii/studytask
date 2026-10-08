@@ -86,6 +86,49 @@ function Auth({done,off}){
   </main>;
 }
 
+function Friends(){
+  const [data,setData]=useState({friends:[],incoming:[],outgoing:[]});
+  const [uname,setUname]=useState(""),[msg,setMsg]=useState("");
+  const load=async()=>{const r=await api("GET","/friends");if(r.ok)setData(r.data)};
+  useEffect(()=>{load()},[]);
+  const send=async e=>{e.preventDefault();if(!uname.trim())return;
+    const r=await api("POST","/friends/request",{username:uname.trim()});
+    setMsg(r.ok?(r.data.auto_accepted?"Langsung tersambung! Kalian udah saling nge-add.":"Permintaan terkirim!"):(r.data.error||"Gagal, coba lagi"));
+    if(r.ok){setUname("");load()}
+    setTimeout(()=>setMsg(""),3500)};
+  const respond=async(id,action)=>{await api("POST","/friends/respond",{request_id:id,action});load()};
+  const remove=async username=>{await api("POST","/friends/remove",{username});load()};
+
+  return <div className="px p-4 mb-6">
+    <div className="h text-xs mb-4">TEMAN</div>
+    <form onSubmit={send} className="flex gap-2 mb-3">
+      <input placeholder="username teman" value={uname} onChange={e=>setUname(e.target.value)}/>
+      <button className="btn pri">TAMBAH</button>
+    </form>
+    {msg&&<div className="mb-3">{msg}</div>}
+
+    {data.incoming.length>0&&<div className="mb-4">
+      <div className="h text-[10px] mb-2">PERMINTAAN MASUK</div>
+      {data.incoming.map(r=><div key={r.id} className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+        <span className="tag">{r.username}</span>
+        <div className="flex gap-1">
+          <button className="btn" onClick={()=>respond(r.id,"accept")}>TERIMA</button>
+          <button className="btn" onClick={()=>respond(r.id,"decline")}>TOLAK</button>
+        </div>
+      </div>)}
+    </div>}
+
+    <div className="h text-[10px] mb-2">DAFTAR TEMAN ({data.friends.length})</div>
+    {!data.friends.length&&<div className="opacity-50">belum ada teman, coba tambah di atas</div>}
+    {data.friends.map(f=><div key={f.username} className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+      <span className="tag">{f.username}</span>
+      <button className="btn" onClick={()=>remove(f.username)}>HAPUS</button>
+    </div>)}
+
+    {data.outgoing.length>0&&<div className="opacity-60 mt-3">menunggu diterima: {data.outgoing.map(o=>o.username).join(", ")}</div>}
+  </div>;
+}
+
 function Board({me,refresh,logout}){
   const empty={title:"",subject:"",deadline:"",priority:1,notes:""};
   const [tasks,setTasks]=useState([]),[f,setF]=useState(empty),[eid,setEid]=useState(null);
@@ -117,7 +160,10 @@ function Board({me,refresh,logout}){
         <h1 className="h logo text-xl sm:text-3xl md:text-4xl">STUDYTASK<span className="blink">_</span></h1>
         <p className="opacity-80">Quest board mahasiswa — selesaikan tugas, naik level.</p>
       </div>
-      <button className="btn max-w-full truncate" onClick={logout}>LOGOUT @{me.user.username}</button>
+      <div className="flex gap-2 flex-wrap">
+        <a href="/" className="btn">← BERANDA</a>
+        <button className="btn max-w-full truncate" onClick={logout}>LOGOUT @{me.user.username}</button>
+      </div>
     </header>
 
     <section className="grid md:grid-cols-3 gap-4 sm:gap-6 mb-4 sm:mb-6">
@@ -150,6 +196,8 @@ function Board({me,refresh,logout}){
         </div>)}
       </div>
     </section>
+
+    <Friends/>
 
     <form onSubmit={save} className="px p-4 grid md:grid-cols-6 gap-3 mb-6">
       <div className="h text-xs md:col-span-6">{eid?"> EDIT QUEST":"> QUEST BARU"}</div>
