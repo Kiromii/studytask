@@ -1,7 +1,9 @@
 import os
+import json
+import random
 import re
 import uuid
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from functools import wraps
 
 from flask import Flask, request, jsonify, g
@@ -20,6 +22,42 @@ db = create_engine(url, pool_pre_ping=True)
 ser = URLSafeTimedSerializer(os.getenv("SECRET_KEY", "dev-secret-ganti-di-vercel"))
 FIELDS = ("title", "subject", "notes", "deadline", "priority", "status", "done_at")
 DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+BATTLE_QUESTIONS = 5
+BATTLE_TIME_LIMIT = 15
+
+QUESTION_BANK = [
+    ("Kompleksitas waktu binary search pada array terurut adalah?", ["O(1)", "O(log n)", "O(n)", "O(n log n)"], 1, "mudah"),
+    ("Struktur data yang mengikuti prinsip LIFO adalah?", ["Queue", "Stack", "Heap", "Graph"], 1, "mudah"),
+    ("Struktur data yang mengikuti prinsip FIFO adalah?", ["Stack", "Queue", "Tree", "Set"], 1, "mudah"),
+    ("Traversal tree yang menghasilkan urutan kiri-root-kanan adalah?", ["Preorder", "Inorder", "Postorder", "Level order"], 1, "mudah"),
+    ("Manakah yang bukan tipe data primitif umum?", ["Integer", "Boolean", "String", "Array"], 3, "mudah"),
+    ("Apa output operator modulo 17 % 5?", ["1", "2", "3", "4"], 1, "mudah"),
+    ("Algoritma BFS biasanya menggunakan struktur data apa?", ["Stack", "Queue", "Heap", "Hash table"], 1, "mudah"),
+    ("Algoritma DFS secara iteratif paling sering menggunakan?", ["Queue", "Stack", "Array terurut", "Priority queue"], 1, "mudah"),
+    ("Kunci utama hash table adalah fungsi hash yang baik meminimalkan?", ["Sorting", "Collision", "Recursion", "Inheritance"], 1, "mudah"),
+    ("Pada rekursi, kondisi yang menghentikan pemanggilan berulang disebut?", ["Loop guard", "Base case", "Constructor", "Callback"], 1, "mudah"),
+    ("Kompleksitas worst-case insertion sort adalah?", ["O(log n)", "O(n)", "O(n log n)", "O(n²)"], 3, "menengah"),
+    ("Kompleksitas rata-rata quicksort adalah?", ["O(log n)", "O(n)", "O(n log n)", "O(n²)"], 2, "menengah"),
+    ("Kompleksitas worst-case quicksort terjadi saat pivot selalu?", ["Median", "Acak", "Elemen minimum/maksimum", "Duplikat"], 2, "menengah"),
+    ("Algoritma yang cocok untuk shortest path dengan bobot non-negatif adalah?", ["Dijkstra", "BFS selalu", "Kruskal", "Binary search"], 0, "menengah"),
+    ("Kruskal digunakan untuk mencari?", ["Topological sort", "Minimum spanning tree", "Longest path", "String match"], 1, "menengah"),
+    ("Memoization terutama digunakan untuk mengurangi?", ["Penggunaan tipe data", "Perhitungan berulang", "Jumlah variabel", "Ukuran input"], 1, "menengah"),
+    ("Syarat utama dynamic programming adalah submasalah yang?", ["Selalu independen", "Tumpang tindih dan memiliki optimal substructure", "Berukuran sama", "Tidak memiliki solusi"], 1, "menengah"),
+    ("Topological sort hanya dapat diterapkan pada?", ["Undirected graph", "DAG", "Complete graph", "Cyclic graph"], 1, "menengah"),
+    ("Heap maksimum selalu memiliki nilai terbesar di?", ["Daun paling kiri", "Root", "Daun paling kanan", "Node acak"], 1, "menengah"),
+    ("Operasi pencarian rata-rata pada hash table yang baik adalah?", ["O(1)", "O(log n)", "O(n)", "O(n²)"], 0, "menengah"),
+    ("Manakah algoritma sorting yang stabil secara umum?", ["Heap sort", "Selection sort", "Merge sort", "Quick sort"], 2, "menengah"),
+    ("Binary tree disebut balanced jika tinggi subtree kiri dan kanan berbeda paling banyak?", ["0", "1", "2", "log n"], 1, "menengah"),
+    ("Teknik two pointers paling sering membantu mengurangi kompleksitas dari O(n²) menjadi?", ["O(1)", "O(log n)", "O(n)", "O(n log n)"], 2, "menengah"),
+    ("Union-Find efisien digunakan untuk mendeteksi?", ["Siklus pada graf tak berarah", "Palindrom", "Urutan string", "Nilai maksimum"], 0, "menengah"),
+    ("Pada graph adjacency list, iterasi seluruh tetangga sebuah node bergantung pada?", ["Jumlah edge node tersebut", "Jumlah seluruh node saja", "Kedalaman tree", "Nilai bobot"], 0, "menengah"),
+    ("Algoritma greedy membuat pilihan yang?", ["Selalu melihat seluruh solusi", "Terbaik secara lokal di setiap langkah", "Acak", "Paling mahal"], 1, "menengah"),
+    ("Kompleksitas merge sort untuk n elemen adalah?", ["O(n)", "O(log n)", "O(n log n)", "O(n²)"], 2, "sulit"),
+    ("Jika T(n)=2T(n/2)+n, kompleksitasnya menurut Master theorem adalah?", ["O(log n)", "O(n)", "O(n log n)", "O(n²)"], 2, "sulit"),
+    ("Teknik backtracking biasanya mengembalikan pilihan ketika?", ["Menemukan solusi parsial yang tidak valid", "Input kosong", "Loop selesai normal", "Hash collision"], 0, "sulit"),
+    ("Manakah representasi yang tepat untuk edge berbobot pada adjacency list?", ["Hanya node tujuan", "Pasangan node tujuan dan bobot", "Hanya bobot", "Indeks array saja"], 1, "sulit"),
+    ("Algoritma Floyd-Warshall menyelesaikan masalah?", ["Single-source shortest path", "All-pairs shortest path", "Minimum cut saja", "Sorting"], 1, "sulit"),
+]
 
 SCHEMA = [
     "CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, pw TEXT NOT NULL, created_at TEXT)",
@@ -33,6 +71,20 @@ SCHEMA = [
         id TEXT PRIMARY KEY, sender_id TEXT NOT NULL, receiver_id TEXT NOT NULL,
         status TEXT DEFAULT 'pending', created_at TEXT,
         UNIQUE (sender_id, receiver_id))""",
+    """CREATE TABLE IF NOT EXISTS questions (
+        id TEXT PRIMARY KEY, prompt TEXT NOT NULL, option_a TEXT NOT NULL,
+        option_b TEXT NOT NULL, option_c TEXT NOT NULL, option_d TEXT NOT NULL,
+        correct_index INTEGER NOT NULL, difficulty TEXT DEFAULT 'menengah', topic TEXT DEFAULT 'Algoritma & Pemrograman')""",
+    """CREATE TABLE IF NOT EXISTS battles (
+        id TEXT PRIMARY KEY, challenger_id TEXT NOT NULL, opponent_id TEXT NOT NULL,
+        status TEXT DEFAULT 'pending', question_ids TEXT NOT NULL, current_question INTEGER DEFAULT 0,
+        created_at TEXT NOT NULL, started_at TEXT, question_started_at TEXT,
+        finished_at TEXT, winner_id TEXT)""",
+    """CREATE TABLE IF NOT EXISTS battle_answers (
+        id TEXT PRIMARY KEY, battle_id TEXT NOT NULL, question_index INTEGER NOT NULL,
+        user_id TEXT NOT NULL, choice INTEGER NOT NULL, correct INTEGER NOT NULL,
+        answered_at TEXT NOT NULL, elapsed_ms INTEGER NOT NULL, score_awarded INTEGER DEFAULT 0,
+        UNIQUE (battle_id, question_index, user_id))""",
 ]
 for sql in SCHEMA:
     with db.begin() as c:
@@ -44,6 +96,17 @@ for sql in ("ALTER TABLE tasks ADD COLUMN user_id TEXT", "ALTER TABLE tasks ADD 
             c.execute(text(sql))
     except Exception:
         pass
+
+with db.begin() as c:
+    for index, (prompt, options, correct, difficulty) in enumerate(QUESTION_BANK):
+        exists = c.execute(text("SELECT 1 FROM questions WHERE prompt=:p"), {"p": prompt}).first()
+        if not exists:
+            c.execute(text("""
+                INSERT INTO questions(id, prompt, option_a, option_b, option_c, option_d, correct_index, difficulty, topic)
+                VALUES(:id, :prompt, :a, :b, :c, :d, :correct, :difficulty, :topic)
+            """), {"id": "seed-" + str(index + 1), "prompt": prompt, "a": options[0],
+                   "b": options[1], "c": options[2], "d": options[3], "correct": correct,
+                   "difficulty": difficulty, "topic": "Algoritma & Pemrograman"})
 
 app = Flask(__name__)
 
@@ -133,6 +196,8 @@ def stats(uid, today):
             "early": n("AND deadline<>'' AND done_at<=deadline") >= 3,
             "s3": best >= 3,
             "s7": best >= 7,
+            "first_blood": c.execute(text("SELECT COUNT(*) FROM battles WHERE winner_id=:u"), {"u": uid}).scalar() >= 1,
+            "algo_master": c.execute(text("SELECT COUNT(*) FROM battles WHERE winner_id=:u"), {"u": uid}).scalar() >= 5,
         }
         have = {r[0] for r in c.execute(text("SELECT code FROM badges WHERE user_id=:u"), {"u": uid})}
         new = [k for k, ok in rules.items() if ok and k not in have]
@@ -324,3 +389,263 @@ def remove_friend():
                     OR (sender_id=:target AND receiver_id=:me))
             """), {"me": g.uid, "target": target.id})
     return jsonify(ok=True)
+
+
+# ---------- BATTLE CORE ----------
+def battle_row(c, battle_id):
+    return c.execute(text("SELECT * FROM battles WHERE id=:id"), {"id": battle_id}).mappings().first()
+
+
+def battle_scores(c, battle_id):
+    rows = c.execute(text("""
+        SELECT user_id, COALESCE(SUM(score_awarded), 0) AS score
+        FROM battle_answers WHERE battle_id=:id GROUP BY user_id
+    """), {"id": battle_id}).mappings().all()
+    return {row["user_id"]: int(row["score"]) for row in rows}
+
+
+def award_battle_badges(c, user_id):
+    wins = c.execute(text("SELECT COUNT(*) FROM battles WHERE winner_id=:u"), {"u": user_id}).scalar() or 0
+    codes = []
+    if wins >= 1:
+        codes.append("first_blood")
+    if wins >= 5:
+        codes.append("algo_master")
+    for code in codes:
+        c.execute(text("INSERT INTO badges(user_id, code) VALUES(:u,:code) ON CONFLICT DO NOTHING"),
+                  {"u": user_id, "code": code})
+
+
+def advance_battle(c, battle):
+    if battle["status"] != "active":
+        return battle
+    index = int(battle["current_question"])
+    answered = c.execute(text("""
+        SELECT COUNT(*) FROM battle_answers
+        WHERE battle_id=:id AND question_index=:index
+    """), {"id": battle["id"], "index": index}).scalar() or 0
+    started = datetime.fromisoformat(battle["question_started_at"])
+    expired = datetime.now() - started >= timedelta(seconds=BATTLE_TIME_LIMIT)
+    if answered < 2 and not expired:
+        return battle
+
+    if index + 1 >= BATTLE_QUESTIONS:
+        scores = battle_scores(c, battle["id"])
+        challenger_score = scores.get(battle["challenger_id"], 0)
+        opponent_score = scores.get(battle["opponent_id"], 0)
+        winner = (battle["challenger_id"] if challenger_score > opponent_score else
+                  battle["opponent_id"] if opponent_score > challenger_score else None)
+        c.execute(text("""
+            UPDATE battles SET status='finished', finished_at=:finished, winner_id=:winner
+            WHERE id=:id AND status='active'
+        """), {"id": battle["id"], "finished": datetime.now().isoformat(), "winner": winner})
+        if winner:
+            award_battle_badges(c, winner)
+    else:
+        c.execute(text("""
+            UPDATE battles SET current_question=:index, question_started_at=:started
+            WHERE id=:id AND status='active'
+        """), {"id": battle["id"], "index": index + 1, "started": datetime.now().isoformat()})
+    return battle_row(c, battle["id"])
+
+
+def battle_payload(c, battle):
+    scores = battle_scores(c, battle["id"])
+    users = c.execute(text("""
+        SELECT id, username FROM users WHERE id IN (:challenger, :opponent)
+    """), {"challenger": battle["challenger_id"], "opponent": battle["opponent_id"]}).mappings().all()
+    names = {row["id"]: row["username"] for row in users}
+    mine = battle["challenger_id"] if g.uid == battle["challenger_id"] else battle["opponent_id"]
+    other = battle["opponent_id"] if mine == battle["challenger_id"] else battle["challenger_id"]
+    result = {
+        "id": battle["id"], "status": battle["status"], "current_question": int(battle["current_question"]),
+        "total_questions": BATTLE_QUESTIONS, "time_limit": BATTLE_TIME_LIMIT,
+        "question_started_at": battle["question_started_at"], "started_at": battle["started_at"],
+        "finished_at": battle["finished_at"], "winner": names.get(battle["winner_id"]) if battle["winner_id"] else None,
+        "you": {"username": names.get(mine), "score": scores.get(mine, 0)},
+        "opponent": {"username": names.get(other), "score": scores.get(other, 0)},
+    }
+    if battle["status"] == "active":
+        question_ids = json.loads(battle["question_ids"])
+        question = c.execute(text("SELECT * FROM questions WHERE id=:id"), {"id": question_ids[int(battle["current_question"])]}).mappings().first()
+        result["question"] = {
+            "index": int(battle["current_question"]), "prompt": question["prompt"],
+            "options": [question["option_a"], question["option_b"], question["option_c"], question["option_d"]],
+        }
+        mine_answer = c.execute(text("""
+            SELECT choice, correct, score_awarded FROM battle_answers
+            WHERE battle_id=:battle AND question_index=:index AND user_id=:user
+        """), {"battle": battle["id"], "index": int(battle["current_question"]), "user": mine}).mappings().first()
+        other_answer = c.execute(text("""
+            SELECT 1 FROM battle_answers
+            WHERE battle_id=:battle AND question_index=:index AND user_id=:user
+        """), {"battle": battle["id"], "index": int(battle["current_question"]), "user": other}).first()
+        result["your_answer"] = dict(mine_answer) if mine_answer else None
+        result["opponent_answered"] = bool(other_answer)
+    return result
+
+
+@app.get("/api/battles")
+@auth
+def list_battles():
+    with db.begin() as c:
+        incoming = c.execute(text("""
+            SELECT b.id, u.username, b.created_at
+            FROM battles b JOIN users u ON u.id=b.challenger_id
+            WHERE b.opponent_id=:u AND b.status='pending' ORDER BY b.created_at DESC
+        """), {"u": g.uid}).mappings().all()
+        outgoing = c.execute(text("""
+            SELECT b.id, u.username, b.created_at
+            FROM battles b JOIN users u ON u.id=b.opponent_id
+            WHERE b.challenger_id=:u AND b.status='pending' ORDER BY b.created_at DESC
+        """), {"u": g.uid}).mappings().all()
+        active = c.execute(text("""
+            SELECT id FROM battles
+            WHERE (challenger_id=:u OR opponent_id=:u) AND status='active'
+            ORDER BY started_at DESC
+        """), {"u": g.uid}).scalars().all()
+    return jsonify(incoming=[dict(row) for row in incoming], outgoing=[dict(row) for row in outgoing], active=list(active))
+
+
+@app.post("/api/battles/challenge")
+@auth
+def challenge_friend():
+    data = request.get_json(force=True) or {}
+    username = str(data.get("username", "")).strip().lower()
+    with db.begin() as c:
+        target = friend_user(c, username)
+        if not target:
+            return jsonify(error="teman tidak ditemukan"), 404
+        if target.id == g.uid:
+            return jsonify(error="tidak bisa menantang diri sendiri"), 400
+        friendship = c.execute(text("""
+            SELECT 1 FROM friend_requests
+            WHERE status='accepted'
+              AND ((sender_id=:me AND receiver_id=:target) OR (sender_id=:target AND receiver_id=:me))
+        """), {"me": g.uid, "target": target.id}).first()
+        if not friendship:
+            return jsonify(error="hanya teman yang bisa ditantang"), 403
+        existing = c.execute(text("""
+            SELECT 1 FROM battles
+            WHERE status IN ('pending', 'active')
+              AND ((challenger_id=:me AND opponent_id=:target) OR (challenger_id=:target AND opponent_id=:me))
+        """), {"me": g.uid, "target": target.id}).first()
+        if existing:
+            return jsonify(error="masih ada battle yang berjalan"), 409
+        question_rows = c.execute(text("SELECT id FROM questions")).scalars().all()
+        question_ids = random.sample(question_rows, BATTLE_QUESTIONS)
+        battle_id = uuid.uuid4().hex
+        c.execute(text("""
+            INSERT INTO battles(id, challenger_id, opponent_id, status, question_ids, current_question, created_at)
+            VALUES(:id, :challenger, :opponent, 'pending', :questions, 0, :created)
+        """), {"id": battle_id, "challenger": g.uid, "opponent": target.id,
+                "questions": json.dumps(question_ids), "created": datetime.now().isoformat()})
+    return jsonify(id=battle_id, username=target.username), 201
+
+
+@app.post("/api/battles/respond")
+@auth
+def respond_battle():
+    data = request.get_json(force=True) or {}
+    action = data.get("action")
+    if action not in ("accept", "decline"):
+        return jsonify(error="aksi tidak valid"), 400
+    with db.begin() as c:
+        battle = battle_row(c, str(data.get("battle_id", "")))
+        if not battle or battle["opponent_id"] != g.uid or battle["status"] != "pending":
+            return jsonify(error="tantangan tidak ditemukan"), 404
+        if action == "decline":
+            c.execute(text("UPDATE battles SET status='declined' WHERE id=:id"), {"id": battle["id"]})
+        else:
+            now = datetime.now().isoformat()
+            c.execute(text("""
+                UPDATE battles SET status='active', started_at=:now, question_started_at=:now
+                WHERE id=:id AND status='pending'
+            """), {"id": battle["id"], "now": now})
+    return jsonify(ok=True, status="active" if action == "accept" else "declined")
+
+
+@app.get("/api/battles/history")
+@auth
+def battle_history():
+    with db.begin() as c:
+        rows = c.execute(text("""
+            SELECT b.*, cu.username AS challenger, ou.username AS opponent
+            FROM battles b JOIN users cu ON cu.id=b.challenger_id JOIN users ou ON ou.id=b.opponent_id
+            WHERE (b.challenger_id=:u OR b.opponent_id=:u) AND b.status IN ('finished', 'declined')
+            ORDER BY COALESCE(b.finished_at, b.created_at) DESC LIMIT 20
+        """), {"u": g.uid}).mappings().all()
+        result = []
+        for row in rows:
+            scores = battle_scores(c, row["id"])
+            result.append({"id": row["id"], "status": row["status"], "challenger": row["challenger"],
+                           "opponent": row["opponent"],
+                           "winner": row["challenger"] if row["winner_id"] == row["challenger_id"] else
+                           row["opponent"] if row["winner_id"] == row["opponent_id"] else None,
+                           "your_score": scores.get(g.uid, 0),
+                           "opponent_score": scores.get(row["opponent_id"] if g.uid == row["challenger_id"] else row["challenger_id"], 0),
+                           "finished_at": row["finished_at"]})
+    return jsonify(result)
+
+
+@app.get("/api/battles/<battle_id>")
+@auth
+def get_battle(battle_id):
+    with db.begin() as c:
+        battle = battle_row(c, battle_id)
+        if not battle or g.uid not in (battle["challenger_id"], battle["opponent_id"]):
+            return jsonify(error="battle tidak ditemukan"), 404
+        battle = advance_battle(c, battle)
+        return jsonify(battle_payload(c, battle))
+
+
+@app.post("/api/battles/<battle_id>/answer")
+@auth
+def answer_battle(battle_id):
+    data = request.get_json(force=True) or {}
+    try:
+        question_index = int(data.get("question_index"))
+        choice = int(data.get("choice"))
+    except (TypeError, ValueError):
+        return jsonify(error="jawaban tidak valid"), 400
+    if choice not in range(4):
+        return jsonify(error="pilihan tidak valid"), 400
+    with db.begin() as c:
+        battle = battle_row(c, battle_id)
+        if not battle or g.uid not in (battle["challenger_id"], battle["opponent_id"]):
+            return jsonify(error="battle tidak ditemukan"), 404
+        battle = advance_battle(c, battle)
+        if battle["status"] != "active":
+            return jsonify(error="battle sudah selesai"), 409
+        if question_index != int(battle["current_question"]):
+            return jsonify(error="soal sudah berganti"), 409
+        existing = c.execute(text("""
+            SELECT 1 FROM battle_answers WHERE battle_id=:battle AND question_index=:index AND user_id=:user
+        """), {"battle": battle_id, "index": question_index, "user": g.uid}).first()
+        if existing:
+            return jsonify(error="jawaban sudah dikirim"), 409
+        question_ids = json.loads(battle["question_ids"])
+        question = c.execute(text("SELECT correct_index FROM questions WHERE id=:id"),
+                             {"id": question_ids[question_index]}).first()
+        now = datetime.now()
+        started = datetime.fromisoformat(battle["question_started_at"])
+        elapsed_ms = max(0, int((now - started).total_seconds() * 1000))
+        correct = int(choice == question.correct_index)
+        c.execute(text("""
+            INSERT INTO battle_answers(id, battle_id, question_index, user_id, choice, correct, answered_at, elapsed_ms, score_awarded)
+            VALUES(:id, :battle, :index, :user, :choice, :correct, :answered, :elapsed, :score)
+        """), {"id": uuid.uuid4().hex, "battle": battle_id, "index": question_index, "user": g.uid,
+                "choice": choice, "correct": correct, "answered": now.isoformat(), "elapsed": elapsed_ms,
+                "score": correct})
+        answers = c.execute(text("""
+            SELECT user_id, correct, answered_at FROM battle_answers
+            WHERE battle_id=:battle AND question_index=:index
+        """), {"battle": battle_id, "index": question_index}).mappings().all()
+        if len(answers) == 2 and all(row["correct"] for row in answers):
+            fastest = min(answers, key=lambda row: row["answered_at"])["user_id"]
+            c.execute(text("""
+                UPDATE battle_answers SET score_awarded=2
+                WHERE battle_id=:battle AND question_index=:index AND user_id=:user
+            """), {"battle": battle_id, "index": question_index, "user": fastest})
+        battle = advance_battle(c, battle)
+        return jsonify(battle_payload(c, battle))

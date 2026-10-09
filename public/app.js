@@ -7,7 +7,7 @@ const { useState, useEffect } = React,
   PRI = ['', 'EASY', 'MID', 'BOSS'],
   CCOL = { todo: 'var(--a4)', doing: 'var(--a1)', done: 'var(--a3)' },
   PCOL = ['', '#0f9d74', '#cf8f00', '#e0246f'],
-  BCOL = { first: 'var(--a1)', q10: 'var(--a2)', boss: 'var(--a3)', early: 'var(--a4)', s3: 'var(--hot)', s7: 'var(--a1)' },
+  BCOL = { first: 'var(--a1)', q10: 'var(--a2)', boss: 'var(--a3)', early: 'var(--a4)', s3: 'var(--hot)', s7: 'var(--a1)', first_blood: 'var(--a2)', algo_master: 'var(--a3)' },
   BADGES = [
     { c: 'first', n: 'QUEST PERTAMA', d: 'Selesaikan 1 tugas', m: '..#../.###./#####/.###./.#.#.' },
     { c: 'q10', n: 'RAJIN', d: 'Selesaikan 10 tugas', m: '.#.#./#####/#####/.###./..#..' },
@@ -15,6 +15,8 @@ const { useState, useEffect } = React,
     { c: 'early', n: 'ANTI KEBUT', d: '3 tugas selesai sebelum deadline', m: '...#./..##./.###./..##./.#...' },
     { c: 's3', n: 'API KECIL', d: 'Streak 3 hari', m: '..#../.##../.###./#####/.###.' },
     { c: 's7', n: 'RAJA STREAK', d: 'Streak 7 hari', m: '#.#.#/#####/#####/#####/.....' },
+    { c: 'first_blood', n: 'FIRST BLOOD', d: 'Menangkan 1 battle', m: '..#../.###./#####/.###./#...#' },
+    { c: 'algo_master', n: 'JAGO ALGORITMA', d: 'Menangkan 5 battle', m: '#####/.#.#./..#../.#.#./#####' },
   ],
   iso = (a) => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4 + a * 864e5).toISOString().slice(0, 10),
   day = (a) => (a ? Math.round((new Date(a + 'T00:00:00') - new Date(new Date().toDateString())) / 864e5) : null),
@@ -41,6 +43,8 @@ function fake(a, t, s) {
   if (t === '/logout') return ((demo.user = null), n({}));
   if (!demo.user) return { ok: !1, status: 401, data: { error: 'belum login' } };
   if (t.startsWith('/me')) return n(demoMe());
+  if (t === '/battles') return n({ incoming: [], outgoing: [], active: [] });
+  if (t === '/battles/history') return n([]);
   const r = t.split('/')[2];
   return a === 'GET'
     ? n([...demo.tasks])
@@ -210,6 +214,135 @@ function Friends() {
     a.outgoing.length > 0 && React.createElement('div', { className: 'opacity-60 mt-3' }, 'menunggu diterima: ', a.outgoing.map((l) => l.username).join(', ')),
   );
 }
+function BattleArena() {
+  const [a, t] = useState({ incoming: [], outgoing: [], active: [] }),
+    [history, b] = useState([]),
+    [s, n] = useState(null),
+    [r, d] = useState(null),
+    [o, p] = useState(''),
+    [g, v] = useState(''),
+    [l, c] = useState(Date.now());
+  const load = async () => {
+      const e = await api('GET', '/battles'),
+        m = await api('GET', '/battles/history');
+      e.ok && (t(e.data), m.ok && b(m.data), e.data.active.length && !s && n(e.data.active[0]));
+    },
+    loadBattle = async (e) => {
+      const m = await api('GET', '/battles/' + e);
+      m.ok ? d(m.data) : d(null);
+    };
+  (useEffect(() => {
+    load();
+  }, []),
+    useEffect(() => {
+      if (!s) return;
+      loadBattle(s);
+      const e = setInterval(() => loadBattle(s), 1e3);
+      return () => clearInterval(e);
+    }, [s]),
+    useEffect(() => {
+      const e = setInterval(() => c(Date.now()), 250);
+      return () => clearInterval(e);
+    }, []));
+  const h = async (e) => {
+      e.preventDefault();
+      const m = await api('POST', '/battles/challenge', { username: o.trim() });
+      v(m.ok ? 'Tantangan terkirim!' : m.data.error || 'Gagal mengirim tantangan');
+      m.ok && (p(''), load());
+    },
+    y = async (e, m) => {
+      const u = await api('POST', '/battles/respond', { battle_id: e, action: m });
+      (u.ok && m === 'accept' && n(e), v(u.ok ? (m === 'accept' ? 'Battle dimulai!' : 'Tantangan ditolak.') : u.data.error || 'Gagal'), load());
+    },
+    w = async (e) => {
+      if (!r || r.your_answer) return;
+      const m = await api('POST', '/battles/' + r.id + '/answer', { question_index: r.question.index, choice: e });
+      m.ok ? d(m.data) : v(m.data.error || 'Jawaban gagal');
+    },
+    E = r && 'active' === r.status ? Math.max(0, r.time_limit - Math.floor((l - new Date(r.question_started_at).getTime()) / 1e3)) : 0,
+    R = React.createElement;
+  return R(
+    'section',
+    { className: 'px p-4 mb-6' },
+    R('div', { className: 'h text-xs mb-4' }, 'BATTLE ARENA'),
+    R('form', { onSubmit: h, className: 'flex gap-2 mb-3' }, R('input', { placeholder: 'username teman untuk ditantang', value: o, onChange: (e) => p(e.target.value) }), R('button', { className: 'btn pri' }, 'TANTANG')),
+    g && R('div', { className: 'mb-3' }, g),
+    a.incoming.length > 0 &&
+      R(
+        'div',
+        { className: 'mb-4' },
+        R('div', { className: 'h text-[10px] mb-2' }, 'TANTANGAN MASUK'),
+        a.incoming.map((e) =>
+          R(
+            'div',
+            { key: e.id, className: 'flex items-center justify-between gap-2 mb-2 flex-wrap' },
+            R('span', { className: 'tag' }, e.username),
+            R('div', { className: 'flex gap-1' }, R('button', { className: 'btn', onClick: () => y(e.id, 'accept') }, 'TERIMA'), R('button', { className: 'btn', onClick: () => y(e.id, 'decline') }, 'TOLAK')),
+          ),
+        ),
+      ),
+    r &&
+      'active' === r.status &&
+      R(
+        'div',
+        { className: 'card p-4 mb-4' },
+        R(
+          'div',
+          { className: 'flex justify-between gap-2 flex-wrap' },
+          R('span', { className: 'h text-[10px]' }, r.you.username, ' ', r.you.score, ' — ', r.opponent.score, ' ', r.opponent.username),
+          R('span', { className: 'h text-xs', style: { color: E <= 5 ? 'var(--a2)' : 'var(--ink)' } }, '00:', String(E).padStart(2, '0')),
+        ),
+        R('div', { className: 'h text-[9px] mt-4 mb-3' }, 'SOAL ', r.current_question + 1, '/', r.total_questions),
+        R('div', { className: 'h text-xs leading-6 mb-4' }, r.question.prompt),
+        R(
+          'div',
+          { className: 'grid sm:grid-cols-2 gap-2' },
+          r.question.options.map((e, m) =>
+            R(
+              'button',
+              { key: e, className: 'btn text-left', disabled: !!r.your_answer || E === 0, style: r.your_answer && r.your_answer.choice === m ? { background: 'var(--a1)', color: 'var(--ink)' } : {}, onClick: () => w(m) },
+              String.fromCharCode(65 + m),
+              '. ',
+              e,
+            ),
+          ),
+        ),
+        r.opponent_answered && !r.your_answer && R('div', { className: 'mt-3' }, 'Lawan sudah menjawab. Kejar!'),
+      ),
+    r &&
+      'finished' === r.status &&
+      R(
+        'div',
+        { className: 'card p-4 mb-4' },
+        R('div', { className: 'h text-xs mb-2' }, 'BATTLE SELESAI'),
+        R('div', null, r.winner ? 'PEMENANG: ' + r.winner : 'HASIL IMBANG'),
+        R('div', null, r.you.username, ' ', r.you.score, ' — ', r.opponent.score, ' ', r.opponent.username),
+        R(
+          'button',
+          {
+            className: 'btn mt-3',
+            onClick: () => {
+              d(null);
+              n(null);
+              load();
+            },
+          },
+          'TUTUP',
+        ),
+      ),
+    a.outgoing.length > 0 && R('div', { className: 'opacity-60 mb-3' }, 'menunggu tantangan diterima: ', a.outgoing.map((e) => e.username).join(', ')),
+    !r && 0 === a.active.length && R('div', { className: 'opacity-50' }, 'Tantang teman untuk memulai race 5 soal algoritma.'),
+    history.length > 0 &&
+      R(
+        'div',
+        { className: 'mt-4' },
+        R('div', { className: 'h text-[10px] mb-2' }, 'RIWAYAT BATTLE'),
+        history.map((e) =>
+          R('div', { key: e.id, className: 'flex justify-between gap-2 mb-1' }, R('span', null, e.challenger, ' vs ', e.opponent), R('span', null, e.winner ? 'MENANG: ' + e.winner : 'SERI', ' · ', e.your_score, '-', e.opponent_score)),
+        ),
+      ),
+  );
+}
 function Board({ me: a, refresh: t, logout: s }) {
   const n = { title: '', subject: '', deadline: '', priority: 1, notes: '' },
     [r, d] = useState([]),
@@ -324,6 +457,7 @@ function Board({ me: a, refresh: t, logout: s }) {
       ),
     ),
     React.createElement(Friends, null),
+    React.createElement(BattleArena, null),
     React.createElement(
       'form',
       { onSubmit: D, className: 'px p-4 grid md:grid-cols-6 gap-3 mb-6' },
