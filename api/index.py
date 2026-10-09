@@ -466,6 +466,8 @@ def battle_payload(c, battle):
         "opponent": {"username": names.get(other), "score": scores.get(other, 0)},
     }
     if battle["status"] == "active":
+        started = datetime.fromisoformat(battle["question_started_at"])
+        result["remaining_seconds"] = max(0, BATTLE_TIME_LIMIT - int((datetime.now() - started).total_seconds()))
         question_ids = json.loads(battle["question_ids"])
         question = c.execute(text("SELECT * FROM questions WHERE id=:id"), {"id": question_ids[int(battle["current_question"])]}).mappings().first()
         result["question"] = {

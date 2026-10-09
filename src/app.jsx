@@ -177,6 +177,8 @@ function Friends() {
   };
   useEffect(() => {
     load();
+    const i = setInterval(load, 2000);
+    return () => clearInterval(i);
   }, []);
   const send = async (e) => {
     e.preventDefault();
@@ -255,7 +257,7 @@ function BattleArena() {
     if (!r.ok) return;
     setData(r.data);
     if (h.ok) setHistory(h.data);
-    if (r.data.active.length && !battle) setBattleId(r.data.active[0]);
+    if (r.data.active.length) setBattleId((current) => current || r.data.active[0]);
   };
   const [battleId, setBattleId] = useState(null);
   const loadBattle = async (id) => {
@@ -265,6 +267,8 @@ function BattleArena() {
   };
   useEffect(() => {
     load();
+    const i = setInterval(load, 2000);
+    return () => clearInterval(i);
   }, []);
   useEffect(() => {
     if (!battleId) return;
@@ -297,7 +301,7 @@ function BattleArena() {
     if (r.ok) setBattle(r.data);
     else setMsg(r.data.error || 'Jawaban gagal');
   };
-  const seconds = battle && battle.status === 'active' ? Math.max(0, battle.time_limit - Math.floor((tick - new Date(battle.question_started_at).getTime()) / 1000)) : 0;
+  const seconds = battle && battle.status === 'active' ? battle.remaining_seconds : 0;
   return (
     <section className="px p-4 mb-6">
       <div className="h text-xs mb-4">BATTLE ARENA</div>

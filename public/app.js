@@ -159,6 +159,8 @@ function Friends() {
     };
   useEffect(() => {
     o();
+    const e = setInterval(o, 2e3);
+    return () => clearInterval(e);
   }, []);
   const p = async (l) => {
       if ((l.preventDefault(), !s.trim())) return;
@@ -225,7 +227,7 @@ function BattleArena() {
   const load = async () => {
       const e = await api('GET', '/battles'),
         m = await api('GET', '/battles/history');
-      e.ok && (t(e.data), m.ok && b(m.data), e.data.active.length && !s && n(e.data.active[0]));
+      e.ok && (t(e.data), m.ok && b(m.data), e.data.active.length && n((u) => u || e.data.active[0]));
     },
     loadBattle = async (e) => {
       const m = await api('GET', '/battles/' + e);
@@ -233,6 +235,8 @@ function BattleArena() {
     };
   (useEffect(() => {
     load();
+    const e = setInterval(load, 2e3);
+    return () => clearInterval(e);
   }, []),
     useEffect(() => {
       if (!s) return;
@@ -259,7 +263,7 @@ function BattleArena() {
       const m = await api('POST', '/battles/' + r.id + '/answer', { question_index: r.question.index, choice: e });
       m.ok ? d(m.data) : v(m.data.error || 'Jawaban gagal');
     },
-    E = r && 'active' === r.status ? Math.max(0, r.time_limit - Math.floor((l - new Date(r.question_started_at).getTime()) / 1e3)) : 0,
+    E = r && 'active' === r.status ? r.remaining_seconds : 0,
     R = React.createElement;
   return R(
     'section',
