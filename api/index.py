@@ -29,6 +29,10 @@ SCHEMA = [
         status TEXT DEFAULT 'todo', done_at TEXT, created_at TEXT)""",
     "CREATE TABLE IF NOT EXISTS activity (user_id TEXT, day TEXT, PRIMARY KEY (user_id, day))",
     "CREATE TABLE IF NOT EXISTS badges (user_id TEXT, code TEXT, PRIMARY KEY (user_id, code))",
+    """CREATE TABLE IF NOT EXISTS friend_requests (
+        id TEXT PRIMARY KEY, sender_id TEXT NOT NULL, receiver_id TEXT NOT NULL,
+        status TEXT DEFAULT 'pending', created_at TEXT,
+        UNIQUE (sender_id, receiver_id))""",
 ]
 for sql in SCHEMA:
     with db.begin() as c:
@@ -206,4 +210,117 @@ def update_task(tid):
 def delete_task(tid):
     with db.begin() as c:
         c.execute(text("DELETE FROM tasks WHERE id=:id AND user_id=:u"), {"id": tid, "u": g.uid})
+    return jsonify(ok=True)
+
+
+# ---------- FRIENDS ----------
+def friend_user(c, username):
+    return c.execute(text("SELECT id, username FROM users WHERE username=:u"), {"u": username}).first()
+
+
+@app.get("/api/friends")
+@auth
+def list_friends():
+    with db.connect() as c:
+        friends = c.execute(text("""
+            SELECT u.username
+            FROM friend_requests f
+            JOIN users u ON u.id = CASE WHEN f.sender_id=:u THEN f.receiver_id ELSE f.sender_id END
+            WHERE (f.sender_id=:u OR f.receiver_id=:u) AND f.status='accepted'
+            ORDER BY u.username
+        """), {"u": g.uid}).mappings().all()
+        incoming = c.execute(text("""
+            SELECT f.id, u.username
+            FROM friend_requests f JOIN users u ON u.id=f.sender_id
+            WHERE f.receiver_id=:u AND f.status='pending'
+            ORDER BY f.created_at DESC
+        """), {"u": g.uid}).mappings().all()
+        outgoing = c.execute(text("""
+            SELECT f.id, u.username
+            FROM friend_requests f JOIN users u ON u.id=f.receiver_id
+            WHERE f.sender_id=:u AND f.status='pending'
+            ORDER BY f.created_at DESC
+        """), {"u": g.uid}).mappings().all()
+    return jsonify(
+        friends=[dict(row) for row in friends],
+        incoming=[dict(row) for row in incoming],
+        outgoing=[dict(row) for row in outgoing],
+    )
+
+
+@app.post("/api/friends/request")
+@auth
+def send_friend_request():
+    data = request.get_json(force=True) or {}
+    username = str(data.get("username", "")).strip().lower()
+    if not username:
+        return jsonify(error="username wajib diisi"), 400
+
+    with db.begin() as c:
+        target = friend_user(c, username)
+        if not target:
+            return jsonify(error="username tidak ditemukan"), 404
+        if target.id == g.uid:
+            return jsonify(error="tidak bisa menambahkan diri sendiri"), 400
+
+        existing = c.execute(text("""
+            SELECT id, sender_id, status FROM friend_requests
+            WHERE (sender_id=:me AND receiver_id=:target)
+               OR (sender_id=:target AND receiver_id=:me)
+        """), {"me": g.uid, "target": target.id}).first()
+        if existing and existing.status == "accepted":
+            return jsonify(error="kalian sudah berteman"), 409
+        if existing and existing.status == "pending":
+            if existing.sender_id == target.id:
+                c.execute(text("UPDATE friend_requests SET status='accepted' WHERE id=:id"), {"id": existing.id})
+                return jsonify(ok=True, auto_accepted=True)
+            return jsonify(error="permintaan sudah dikirim"), 409
+        if existing:
+            c.execute(text("""
+                UPDATE friend_requests
+                SET sender_id=:me, receiver_id=:target, status='pending', created_at=:t
+                WHERE id=:id
+            """), {"id": existing.id, "me": g.uid, "target": target.id, "t": datetime.now().isoformat()})
+        else:
+            c.execute(text("""
+                INSERT INTO friend_requests(id, sender_id, receiver_id, status, created_at)
+                VALUES(:id, :sender, :receiver, 'pending', :t)
+            """), {"id": uuid.uuid4().hex, "sender": g.uid, "receiver": target.id,
+                   "t": datetime.now().isoformat()})
+    return jsonify(ok=True, auto_accepted=False), 201
+
+
+@app.post("/api/friends/respond")
+@auth
+def respond_friend_request():
+    data = request.get_json(force=True) or {}
+    request_id = str(data.get("request_id", ""))
+    action = data.get("action")
+    if action not in ("accept", "decline"):
+        return jsonify(error="aksi tidak valid"), 400
+    with db.begin() as c:
+        r = c.execute(text("""
+            UPDATE friend_requests SET status=:status
+            WHERE id=:id AND receiver_id=:u AND status='pending'
+        """), {"status": "accepted" if action == "accept" else "declined",
+                "id": request_id, "u": g.uid})
+    if not r.rowcount:
+        return jsonify(error="permintaan tidak ditemukan"), 404
+    return jsonify(ok=True)
+
+
+@app.post("/api/friends/remove")
+@auth
+def remove_friend():
+    data = request.get_json(force=True) or {}
+    username = str(data.get("username", "")).strip().lower()
+    with db.begin() as c:
+        target = friend_user(c, username)
+        if target:
+            c.execute(text("""
+                DELETE FROM friend_requests
+                WHERE status='accepted'
+                  AND ((sender_id=:me AND receiver_id=:target)
+                    OR (sender_id=:target AND receiver_id=:me))
+            """), {"me": g.uid, "target": target.id})
     return jsonify(ok=True)
