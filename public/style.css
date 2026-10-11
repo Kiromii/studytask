@@ -681,7 +681,7 @@ body {
 }
 @media (min-width: 768px) {
   body {
-    font-size: 16px;
+    font-size: 22px;
   }
 }
 .h {
@@ -989,42 +989,6 @@ footer {
 }
 
 /* --- duel terminal --- */
-.dashboard-shell {
-  position: relative;
-}
-.dashboard-shell > header {
-  padding: 14px 16px;
-  border: 1px solid var(--line);
-  border-radius: 8px !important;
-  background: rgba(3, 13, 9, 0.7);
-}
-.dashboard-shell .terminal-panel,
-.dashboard-shell .card {
-  border-radius: 8px !important;
-  background: rgba(3, 13, 9, 0.82);
-}
-.dashboard-shell .terminal-panel > .h:first-child,
-.dashboard-shell .card > .h:first-child {
-  color: var(--a1);
-}
-.dashboard-shell .terminal-panel form,
-.dashboard-shell .terminal-panel + form {
-  border-color: var(--line);
-}
-.dashboard-shell > section:not(.terminal-arena) {
-  padding-top: 0;
-  padding-bottom: 0;
-}
-.dashboard-shell .px,
-.dashboard-shell .card,
-.dashboard-shell .btn,
-.dashboard-shell input,
-.dashboard-shell select {
-  border-radius: 6px !important;
-}
-.dashboard-shell .btn {
-  letter-spacing: 0.02em;
-}
 .terminal-arena {
   border: 1px solid var(--a1);
   border-radius: 8px !important;
@@ -1084,14 +1048,6 @@ footer {
 }
 .terminal-message {
   margin-top: 10px;
-  color: var(--a3);
-}
-.terminal-help {
-  margin-top: 10px;
-  color: var(--muted);
-  font-size: 0.9em;
-}
-.terminal-help span {
   color: var(--a3);
 }
 .terminal-match {
