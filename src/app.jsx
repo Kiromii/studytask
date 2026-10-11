@@ -133,6 +133,9 @@ function Auth({ done, off }) {
   };
   return (
     <main className="grid place-items-center p-4" style={{ minHeight: '100dvh' }}>
+      <button className="btn theme-toggle fixed top-3 right-3 z-10" data-theme-toggle type="button">
+        [ pixel ui ]
+      </button>
       <form onSubmit={go} className="px p-6 w-full max-w-md grid gap-4">
         <h1 className="h logo text-xl sm:text-2xl text-center">
           STUDYTASK<span className="blink">_</span>
@@ -471,6 +474,9 @@ function Board({ me, refresh, logout }) {
           <a href="/" className="btn">
             ← BERANDA
           </a>
+          <button className="btn theme-toggle" data-theme-toggle type="button">
+            [ pixel ui ]
+          </button>
           <button className="btn max-w-full truncate" onClick={logout}>
             LOGOUT @{me.user.username}
           </button>

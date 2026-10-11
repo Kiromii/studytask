@@ -109,6 +109,7 @@ function Auth({ done: a, off: t }) {
   return React.createElement(
     'main',
     { className: 'grid place-items-center p-4', style: { minHeight: '100dvh' } },
+    React.createElement('button', { className: 'btn theme-toggle fixed top-3 right-3 z-10', 'data-theme-toggle': true, type: 'button' }, '[ pixel ui ]'),
     React.createElement(
       'form',
       {
@@ -407,6 +408,7 @@ function Board({ me: a, refresh: t, logout: s }) {
         'div',
         { className: 'flex gap-2 flex-wrap' },
         React.createElement('a', { href: '/', className: 'btn' }, '\u2190 BERANDA'),
+        React.createElement('button', { className: 'btn theme-toggle', 'data-theme-toggle': true, type: 'button' }, '[ pixel ui ]'),
         React.createElement('button', { className: 'btn max-w-full truncate', onClick: s }, 'LOGOUT @', a.user.username),
       ),
     ),
