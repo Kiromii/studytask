@@ -306,16 +306,22 @@ function BattleArena() {
   };
   const seconds = battle && battle.status === 'active' ? battle.remaining_seconds : 0;
   return (
-    <section className="px p-4 mb-6">
-      <div className="h text-xs mb-4">BATTLE ARENA</div>
-      <form onSubmit={challenge} className="flex gap-2 mb-3">
-        <input placeholder="username teman untuk ditantang" value={uname} onChange={(e) => setUname(e.target.value)} />
-        <button className="btn pri">TANTANG</button>
-      </form>
-      {msg && <div className="mb-3">{msg}</div>}
+    <section className="terminal-arena mb-6">
+      <div className="terminal-titlebar">
+        <span className="terminal-lights" aria-hidden="true"><i /><i /><i /></span>
+        <span>studytask@duel:~/battle/{battle ? battle.id.slice(0, 4) : 'idle'}</span>
+      </div>
+      <div className="terminal-body">
+        <form onSubmit={challenge} className="terminal-command">
+          <span>$ duel --lawan=</span>
+          <input aria-label="Username teman untuk ditantang" placeholder="teman" value={uname} onChange={(e) => setUname(e.target.value)} />
+          <span> --soal=5 --waktu=15</span>
+          <button className="terminal-submit" aria-label="Tantang teman">↵</button>
+        </form>
+        {msg && <div className="terminal-message">{msg}</div>}
       {data.incoming.length > 0 && (
-        <div className="mb-4">
-          <div className="h text-[10px] mb-2">TANTANGAN MASUK</div>
+        <div className="terminal-incoming mb-4">
+          <div className="h text-[10px] mb-2">// TANTANGAN MASUK</div>
           {data.incoming.map((x) => (
             <div key={x.id} className="flex items-center justify-between gap-2 mb-2 flex-wrap">
               <span className="tag">{x.username}</span>
@@ -332,24 +338,20 @@ function BattleArena() {
         </div>
       )}
       {battle && battle.status === 'active' && (
-        <div className="card p-4 mb-4">
-          <div className="flex justify-between gap-2 flex-wrap">
-            <span className="h text-[10px]">
-              {battle.you.username} {battle.you.score} — {battle.opponent.score} {battle.opponent.username}
-            </span>
-            <span className="h text-xs" style={{ color: seconds <= 5 ? 'var(--a2)' : 'var(--ink)' }}>
-              00:{String(seconds).padStart(2, '0')}
-            </span>
+        <div className="terminal-match">
+          <div className="terminal-score">
+            <span><em>kamu</em> <strong>{battle.you.score}</strong></span>
+            <span><em>soal</em> {battle.current_question + 1}/{battle.total_questions}</span>
+            <span><strong className="opponent-score">{battle.opponent.score}</strong> <em>{battle.opponent.username}</em></span>
+            <span><em>sisa</em> <strong className={seconds <= 5 ? 'timer danger' : 'timer'}>00:{String(seconds).padStart(2, '0')}</strong></span>
           </div>
-          <div className="h text-[9px] mt-4 mb-3">
-            SOAL {battle.current_question + 1}/{battle.total_questions}
-          </div>
-          <div className="h text-xs leading-6 mb-4">{battle.question.prompt}</div>
-          <div className="grid sm:grid-cols-2 gap-2">
+          <div className="terminal-divider" />
+          <div className="terminal-question"><span>// soal {battle.current_question + 1}:</span> {battle.question.prompt}</div>
+          <div className="terminal-options">
             {battle.question.options.map((option, index) => (
               <button
                 key={option}
-                className="btn text-left"
+                className="terminal-option"
                 disabled={!!battle.your_answer || seconds === 0}
                 style={battle.your_answer && battle.your_answer.choice === index ? { background: 'var(--a1)', color: 'var(--ink)' } : {}}
                 onClick={() => answer(index)}
@@ -358,13 +360,21 @@ function BattleArena() {
               </button>
             ))}
           </div>
-          {battle.opponent_answered && !battle.your_answer && <div className="mt-3">Lawan sudah menjawab. Kejar!</div>}
+          <div className="terminal-status">
+            {battle.opponent_answered && !battle.your_answer ? <><b>{battle.opponent.username}</b> sudah menjawab. Kejar!</> : <><b>{battle.you.username}</b> {battle.your_answer ? 'sudah menjawab' : 'sedang menjawab'}<span className="cursor-block" /></>}
+          </div>
+          <div className="terminal-divider" />
+          <div className="terminal-log">
+            <div>// log duel</div>
+            {history.slice(0, 2).map((item) => <div key={item.id}>&gt; {item.challenger} vs {item.opponent} · {item.winner ? `menang: ${item.winner}` : 'seri'}</div>)}
+            <div>&gt; soal {battle.current_question + 1} dimulai . . .</div>
+          </div>
         </div>
       )}
       {battle && battle.status === 'finished' && (
-        <div className="card p-4 mb-4">
-          <div className="h text-xs mb-2">BATTLE SELESAI</div>
-          <div>{battle.winner ? 'PEMENANG: ' + battle.winner : 'HASIL IMBANG'}</div>
+        <div className="terminal-match terminal-finished">
+          <div className="terminal-question">// battle selesai</div>
+          <div className="h text-xs mb-2">{battle.winner ? 'PEMENANG: ' + battle.winner : 'HASIL IMBANG'}</div>
           <div>
             {battle.you.username} {battle.you.score} — {battle.opponent.score} {battle.opponent.username}
           </div>
@@ -376,14 +386,14 @@ function BattleArena() {
               load();
             }}
           >
-            TUTUP
+            TUTUP TERMINAL
           </button>
         </div>
       )}
       {data.outgoing.length > 0 && <div className="opacity-60 mb-3">menunggu tantangan diterima: {data.outgoing.map((x) => x.username).join(', ')}</div>}
       {!battle && data.active.length === 0 && <div className="opacity-50">Tantang teman untuk memulai race 5 soal algoritma.</div>}
       {history.length > 0 && (
-        <div className="mt-4">
+        <div className="terminal-history mt-4">
           <div className="h text-[10px] mb-2">RIWAYAT BATTLE</div>
           {history.map((x) => (
             <div key={x.id} className="flex justify-between gap-2 mb-1">
@@ -397,6 +407,7 @@ function BattleArena() {
           ))}
         </div>
       )}
+      </div>
     </section>
   );
 }
