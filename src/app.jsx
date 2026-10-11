@@ -52,6 +52,7 @@ function fake(m, p, b) {
   }
   if (!demo.user) return { ok: false, status: 401, data: { error: 'belum login' } };
   if (p.startsWith('/me')) return ok(demoMe());
+  if (p === '/friends') return ok({ friends: [], incoming: [], outgoing: [] });
   if (p === '/battles') return ok({ incoming: [], outgoing: [], active: [] });
   if (p === '/battles/history') return ok([]);
   const id = p.split('/')[2];
@@ -204,7 +205,7 @@ function Friends() {
   };
 
   return (
-    <div className="px p-4 mb-6">
+    <div className="px terminal-panel p-4 mb-6">
       <div className="h text-xs mb-4">TEMAN</div>
       <form onSubmit={send} className="flex gap-2 mb-3">
         <input placeholder="username teman" value={uname} onChange={(e) => setUname(e.target.value)} />
@@ -318,6 +319,9 @@ function BattleArena() {
           <span> --soal=5 --waktu=15</span>
           <button className="terminal-submit" aria-label="Tantang teman">↵</button>
         </form>
+        <div className="terminal-help">
+          <span>// cara main:</span> tantang teman → terima tantangan → jawab 5 soal sebelum timer habis.
+        </div>
         {msg && <div className="terminal-message">{msg}</div>}
       {data.incoming.length > 0 && (
         <div className="terminal-incoming mb-4">
@@ -473,7 +477,7 @@ function Board({ me, refresh, logout }) {
   const days = me.days || [];
 
   return (
-    <main className="max-w-6xl 2xl:max-w-7xl mx-auto p-3 sm:p-4 md:p-8">
+    <main className="dashboard-shell max-w-6xl 2xl:max-w-7xl mx-auto p-3 sm:p-4 md:p-8">
       <header className="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div>
           <h1 className="h logo text-xl sm:text-3xl md:text-4xl">
@@ -495,7 +499,7 @@ function Board({ me, refresh, logout }) {
       </header>
 
       <section className="grid md:grid-cols-3 gap-4 sm:gap-6 mb-4 sm:mb-6">
-        <div className="px p-4 md:col-span-2">
+        <div className="px terminal-panel p-4 md:col-span-2">
           <div className="h text-xs mb-3">PLAYER · LV {Math.floor(xp / 50) + 1}</div>
           <div className="flex gap-1 mb-1">
             {Array.from({ length: 10 }, (_, i) => (
@@ -524,7 +528,7 @@ function Board({ me, refresh, logout }) {
         <Pomo />
       </section>
 
-      <section className="px p-4 mb-6">
+      <section className="px terminal-panel p-4 mb-6">
         <div className="h text-xs mb-4">
           ACHIEVEMENTS {me.earned.length}/{BADGES.length}
         </div>
@@ -542,7 +546,7 @@ function Board({ me, refresh, logout }) {
       <Friends />
       <BattleArena />
 
-      <form onSubmit={save} className="px p-4 grid md:grid-cols-6 gap-3 mb-6">
+      <form onSubmit={save} className="px terminal-panel p-4 grid md:grid-cols-6 gap-3 mb-6">
         <div className="h text-xs md:col-span-6">{eid ? '> EDIT QUEST' : '> QUEST BARU'}</div>
         <input className="md:col-span-3" placeholder="Judul tugas *" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} />
         <input className="md:col-span-3" placeholder="Mata kuliah" value={f.subject} onChange={(e) => setF({ ...f, subject: e.target.value })} />

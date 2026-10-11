@@ -43,6 +43,7 @@ function fake(a, t, s) {
   if (t === '/logout') return ((demo.user = null), n({}));
   if (!demo.user) return { ok: !1, status: 401, data: { error: 'belum login' } };
   if (t.startsWith('/me')) return n(demoMe());
+  if (t === '/friends') return n({ friends: [], incoming: [], outgoing: [] });
   if (t === '/battles') return n({ incoming: [], outgoing: [], active: [] });
   if (t === '/battles/history') return n([]);
   const r = t.split('/')[2];
@@ -176,7 +177,7 @@ function Friends() {
     };
   return React.createElement(
     'div',
-    { className: 'px p-4 mb-6' },
+    { className: 'px terminal-panel p-4 mb-6' },
     React.createElement('div', { className: 'h text-xs mb-4' }, 'TEMAN'),
     React.createElement(
       'form',
@@ -281,6 +282,7 @@ function BattleArena() {
         R('span', null, ' --soal=5 --waktu=15'),
         R('button', { className: 'terminal-submit', 'aria-label': 'Tantang teman' }, '↵'),
       ),
+      R('div', { className: 'terminal-help' }, R('span', null, '// cara main:'), ' tantang teman → terima tantangan → jawab 5 soal sebelum timer habis.'),
       g && R('div', { className: 'terminal-message' }, g),
     a.incoming.length > 0 &&
       R(
@@ -409,7 +411,7 @@ function Board({ me: a, refresh: t, logout: s }) {
     P = a.days || [];
   return React.createElement(
     'main',
-    { className: 'max-w-6xl 2xl:max-w-7xl mx-auto p-3 sm:p-4 md:p-8' },
+    { className: 'dashboard-shell max-w-6xl 2xl:max-w-7xl mx-auto p-3 sm:p-4 md:p-8' },
     React.createElement(
       'header',
       { className: 'flex flex-wrap items-start justify-between gap-3 mb-6' },
@@ -432,7 +434,7 @@ function Board({ me: a, refresh: t, logout: s }) {
       { className: 'grid md:grid-cols-3 gap-4 sm:gap-6 mb-4 sm:mb-6' },
       React.createElement(
         'div',
-        { className: 'px p-4 md:col-span-2' },
+        { className: 'px terminal-panel p-4 md:col-span-2' },
         React.createElement('div', { className: 'h text-xs mb-3' }, 'PLAYER \xB7 LV ', Math.floor(k / 50) + 1),
         React.createElement(
           'div',
@@ -461,7 +463,7 @@ function Board({ me: a, refresh: t, logout: s }) {
     ),
     React.createElement(
       'section',
-      { className: 'px p-4 mb-6' },
+      { className: 'px terminal-panel p-4 mb-6' },
       React.createElement('div', { className: 'h text-xs mb-4' }, 'ACHIEVEMENTS ', a.earned.length, '/', BADGES.length),
       React.createElement(
         'div',
@@ -481,7 +483,7 @@ function Board({ me: a, refresh: t, logout: s }) {
     React.createElement(BattleArena, null),
     React.createElement(
       'form',
-      { onSubmit: D, className: 'px p-4 grid md:grid-cols-6 gap-3 mb-6' },
+      { onSubmit: D, className: 'px terminal-panel p-4 grid md:grid-cols-6 gap-3 mb-6' },
       React.createElement('div', { className: 'h text-xs md:col-span-6' }, g ? '> EDIT QUEST' : '> QUEST BARU'),
       React.createElement('input', { className: 'md:col-span-3', placeholder: 'Judul tugas *', value: o.title, onChange: (e) => p({ ...o, title: e.target.value }) }),
       React.createElement('input', { className: 'md:col-span-3', placeholder: 'Mata kuliah', value: o.subject, onChange: (e) => p({ ...o, subject: e.target.value }) }),
