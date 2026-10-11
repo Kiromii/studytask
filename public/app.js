@@ -268,25 +268,15 @@ function BattleArena() {
     R = React.createElement;
   return R(
     'section',
-    { className: 'terminal-arena mb-6' },
-    R('div', { className: 'terminal-titlebar' }, R('span', { className: 'terminal-lights', 'aria-hidden': true }, R('i'), R('i'), R('i')), R('span', null, 'studytask@duel:~/battle/', r ? r.id.slice(0, 4) : 'idle')),
-    R(
-      'div',
-      { className: 'terminal-body' },
-      R(
-        'form',
-        { onSubmit: h, className: 'terminal-command' },
-        R('span', null, '$ duel --lawan='),
-        R('input', { 'aria-label': 'Username teman untuk ditantang', placeholder: 'teman', value: o, onChange: (e) => p(e.target.value) }),
-        R('span', null, ' --soal=5 --waktu=15'),
-        R('button', { className: 'terminal-submit', 'aria-label': 'Tantang teman' }, '↵'),
-      ),
-      g && R('div', { className: 'terminal-message' }, g),
+    { className: 'px p-4 mb-6' },
+    R('div', { className: 'h text-xs mb-4' }, 'BATTLE ARENA'),
+    R('form', { onSubmit: h, className: 'flex gap-2 mb-3' }, R('input', { placeholder: 'username teman untuk ditantang', value: o, onChange: (e) => p(e.target.value) }), R('button', { className: 'btn pri' }, 'TANTANG')),
+    g && R('div', { className: 'mb-3' }, g),
     a.incoming.length > 0 &&
       R(
         'div',
-        { className: 'terminal-incoming mb-4' },
-        R('div', { className: 'h text-[10px] mb-2' }, '// TANTANGAN MASUK'),
+        { className: 'mb-4' },
+        R('div', { className: 'h text-[10px] mb-2' }, 'TANTANGAN MASUK'),
         a.incoming.map((e) =>
           R(
             'div',
@@ -300,41 +290,37 @@ function BattleArena() {
       'active' === r.status &&
       R(
         'div',
-        { className: 'terminal-match' },
+        { className: 'card p-4 mb-4' },
         R(
           'div',
-          { className: 'terminal-score' },
-          R('span', null, R('em', null, 'kamu'), ' ', R('strong', null, r.you.score)),
-          R('span', null, R('em', null, 'soal'), ' ', r.current_question + 1, '/', r.total_questions),
-          R('span', null, R('strong', { className: 'opponent-score' }, r.opponent.score), ' ', R('em', null, r.opponent.username)),
-          R('span', null, R('em', null, 'sisa'), ' ', R('strong', { className: E <= 5 ? 'timer danger' : 'timer' }, '00:', String(E).padStart(2, '0'))),
+          { className: 'flex justify-between gap-2 flex-wrap' },
+          R('span', { className: 'h text-[10px]' }, r.you.username, ' ', r.you.score, ' — ', r.opponent.score, ' ', r.opponent.username),
+          R('span', { className: 'h text-xs', style: { color: E <= 5 ? 'var(--a2)' : 'var(--ink)' } }, '00:', String(E).padStart(2, '0')),
         ),
-        R('div', { className: 'terminal-divider' }),
-        R('div', { className: 'terminal-question' }, R('span', null, '// soal ', r.current_question + 1, ':'), ' ', r.question.prompt),
+        R('div', { className: 'h text-[9px] mt-4 mb-3' }, 'SOAL ', r.current_question + 1, '/', r.total_questions),
+        R('div', { className: 'h text-xs leading-6 mb-4' }, r.question.prompt),
         R(
           'div',
-          { className: 'terminal-options' },
+          { className: 'grid sm:grid-cols-2 gap-2' },
           r.question.options.map((e, m) =>
             R(
               'button',
-              { key: e, className: 'terminal-option', disabled: !!r.your_answer || E === 0, style: r.your_answer && r.your_answer.choice === m ? { background: 'var(--a1)', color: 'var(--ink)' } : {}, onClick: () => w(m) },
+              { key: e, className: 'btn text-left', disabled: !!r.your_answer || E === 0, style: r.your_answer && r.your_answer.choice === m ? { background: 'var(--a1)', color: 'var(--ink)' } : {}, onClick: () => w(m) },
               String.fromCharCode(65 + m),
               '. ',
               e,
             ),
           ),
         ),
-        R('div', { className: 'terminal-status' }, r.opponent_answered && !r.your_answer ? R(React.Fragment, null, R('b', null, r.opponent.username), ' sudah menjawab. Kejar!') : R(React.Fragment, null, R('b', null, r.you.username), ' ', r.your_answer ? 'sudah menjawab' : 'sedang menjawab', R('span', { className: 'cursor-block' }))),
-        R('div', { className: 'terminal-divider' }),
-        R('div', { className: 'terminal-log' }, R('div', null, '// log duel'), history.slice(0, 2).map((e) => R('div', { key: e.id }, '> ', e.challenger, ' vs ', e.opponent, ' · ', e.winner ? 'menang: ' + e.winner : 'seri')), R('div', null, '> soal ', r.current_question + 1, ' dimulai . . .')),
+        r.opponent_answered && !r.your_answer && R('div', { className: 'mt-3' }, 'Lawan sudah menjawab. Kejar!'),
       ),
     r &&
       'finished' === r.status &&
       R(
         'div',
-        { className: 'terminal-match terminal-finished' },
-        R('div', { className: 'terminal-question' }, '// battle selesai'),
-        R('div', { className: 'h text-xs mb-2' }, r.winner ? 'PEMENANG: ' + r.winner : 'HASIL IMBANG'),
+        { className: 'card p-4 mb-4' },
+        R('div', { className: 'h text-xs mb-2' }, 'BATTLE SELESAI'),
+        R('div', null, r.winner ? 'PEMENANG: ' + r.winner : 'HASIL IMBANG'),
         R('div', null, r.you.username, ' ', r.you.score, ' — ', r.opponent.score, ' ', r.opponent.username),
         R(
           'button',
@@ -346,7 +332,7 @@ function BattleArena() {
               load();
             },
           },
-          'TUTUP TERMINAL',
+          'TUTUP',
         ),
       ),
     a.outgoing.length > 0 && R('div', { className: 'opacity-60 mb-3' }, 'menunggu tantangan diterima: ', a.outgoing.map((e) => e.username).join(', ')),
@@ -354,13 +340,12 @@ function BattleArena() {
     history.length > 0 &&
       R(
         'div',
-        { className: 'terminal-history mt-4' },
+        { className: 'mt-4' },
         R('div', { className: 'h text-[10px] mb-2' }, 'RIWAYAT BATTLE'),
         history.map((e) =>
           R('div', { key: e.id, className: 'flex justify-between gap-2 mb-1' }, R('span', null, e.challenger, ' vs ', e.opponent), R('span', null, e.winner ? 'MENANG: ' + e.winner : 'SERI', ' · ', e.your_score, '-', e.opponent_score)),
         ),
       ),
-    ),
   );
 }
 function Board({ me: a, refresh: t, logout: s }) {
