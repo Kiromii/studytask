@@ -25,6 +25,21 @@ const lbl = (d) => {
   const n = day(d);
   return n === null ? 'tanpa deadline' : n < 0 ? `TELAT ${-n} hari` : n === 0 ? 'HARI INI!' : `H-${n}`;
 };
+const THEME_KEY = 'studytask-theme';
+const getInitialTheme = () => {
+  const saved = window.localStorage.getItem(THEME_KEY);
+  return saved === 'light' || saved === 'dark' ? saved : window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+};
+
+function ThemeToggle({ theme, onToggle }) {
+  const light = theme === 'light';
+  return (
+    <button className="theme-toggle" type="button" onClick={onToggle} aria-label={`Aktifkan mode ${light ? 'gelap' : 'terang'}`} aria-pressed={light}>
+      <span aria-hidden="true">{light ? '☀' : '☾'}</span>
+      <span>{light ? 'LIGHT' : 'DARK'}</span>
+    </button>
+  );
+}
 
 // ---- Mode demo: dipakai otomatis kalau backend /api tidak ada (mis. file dibuka langsung) ----
 let demo = {
@@ -453,7 +468,7 @@ function Board({ me, refresh, logout }) {
   };
 
   const doneN = tasks.filter((t) => t.status === 'done').length;
-  const xp = tasks.filter((t) => t.status === 'done').reduce((a, t) => a + t.priority * 10, 0);
+  const xp = Number.isFinite(me.xp) ? me.xp : tasks.filter((t) => t.status === 'done').reduce((a, t) => a + t.priority * 10, 0);
   const late = tasks.filter((t) => t.status !== 'done' && day(t.deadline) < 0).length;
   const shown = tasks.filter((t) => (t.title + t.subject).toLowerCase().includes(q.toLowerCase()));
   const days = me.days || [];
@@ -586,6 +601,12 @@ function Board({ me, refresh, logout }) {
                       </div>
                       <div className="h text-[11px] my-2 break-words">{t.title}</div>
                       {t.notes && <div className="leading-5 mb-1 break-words">{t.notes}</div>}
+                      {t.rapid_target_days > 0 && (
+                        <div className="rapid-tag mb-1">
+                          ⚡ RAPID · ≤ {t.rapid_target_days} hari
+                          {t.status === 'done' && t.rapid_qualified ? ` · BONUS +${t.rapid_bonus_xp} XP` : ` · +${t.rapid_bonus_xp} XP`}
+                        </div>
+                      )}
                       <div className={hot ? 'blink font-bold late' : ''}>DEADLINE: {lbl(t.deadline)}</div>
                       <div className="flex gap-1 mt-2 flex-wrap">
                         {ci > 0 && (
@@ -623,7 +644,12 @@ function App() {
   // me=null -> anggap belum login & langsung tampilkan form Auth (sama seperti kerangka statis di index.html),
   // tanpa layar "LOADING" supaya konten pertama tidak menunggu network round-trip ke /api/me.
   const [me, setMe] = useState(null),
-    [off, setOff] = useState(false);
+    [off, setOff] = useState(false),
+    [theme, setTheme] = useState(getInitialTheme);
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem(THEME_KEY, theme);
+  }, [theme]);
   const refresh = async () => {
     const r = await api('GET', '/me?today=' + iso(0));
     setOff(!!window.__off);
@@ -638,6 +664,7 @@ function App() {
   };
   return (
     <>
+      <ThemeToggle theme={theme} onToggle={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))} />
       {off && <div className="demo h text-[9px] text-center py-1 px-2">DEMO MODE — backend tidak terhubung, data hanya contoh</div>}
       {me && me.user ? <Board me={me} refresh={refresh} logout={logout} /> : <Auth done={refresh} off={off} />}
     </>

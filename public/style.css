@@ -53,3 +53,37 @@
   .badge-strip .pixel-icon{width:36px;height:36px}
   .cta-final{text-align:center;border-top:4px solid var(--fg);border-bottom:4px solid var(--fg)}
   footer{text-align:center;padding:24px 16px;opacity:.6}
+
+/* --- user theme --- */
+:root[data-theme='light']{
+  --bg:#fff8e8;
+  --panel:#fff1c7;
+  --fg:#21183b;
+  --ink:#fff8e8;
+  --card:#fffdf5;
+  --sh:#8b6cff;
+}
+:root[data-theme='light'] body{background:var(--bg);color:var(--fg)}
+:root[data-theme='light'] input,
+:root[data-theme='light'] select{background:#fffdf5}
+.theme-toggle{
+  position:fixed;
+  top:12px;
+  right:12px;
+  z-index:30;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  border:3px solid var(--fg);
+  background:var(--panel);
+  color:var(--fg);
+  box-shadow:4px 4px 0 var(--sh);
+  font-family:'Press Start 2P',monospace;
+  font-size:9px;
+  line-height:1;
+  padding:9px 10px;
+}
+.theme-toggle:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--sh)}
+.theme-toggle:focus-visible{outline:3px solid var(--a2);outline-offset:3px}
+.rapid-tag{display:inline-block;background:var(--a2);color:var(--ink);border:2px solid var(--ink);padding:3px 5px;font-family:'Press Start 2P',monospace;font-size:8px;line-height:1.35}
+@media(max-width:640px){.theme-toggle{top:8px;right:8px;font-size:8px;padding:8px}}

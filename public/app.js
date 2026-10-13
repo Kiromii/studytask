@@ -387,7 +387,7 @@ function Board({ me: a, refresh: t, logout: s }) {
       (await api('DELETE', '/tasks/' + e.id), x(null), N());
     },
     R = r.filter((e) => e.status === 'done').length,
-    k = r.filter((e) => e.status === 'done').reduce((e, m) => e + m.priority * 10, 0),
+    k = Number.isFinite(a.xp) ? a.xp : r.filter((e) => e.status === 'done').reduce((e, m) => e + m.priority * 10, 0),
     M = r.filter((e) => e.status !== 'done' && day(e.deadline) < 0).length,
     T = r.filter((e) => (e.title + e.subject).toLowerCase().includes(l.toLowerCase())),
     P = a.days || [];
@@ -534,6 +534,15 @@ function Board({ me: a, refresh: t, logout: s }) {
                 ),
                 React.createElement('div', { className: 'h text-[11px] my-2 break-words' }, i.title),
                 i.notes && React.createElement('div', { className: 'leading-5 mb-1 break-words' }, i.notes),
+                i.rapid_target_days > 0 &&
+                  React.createElement(
+                    'div',
+                    { className: 'rapid-tag mb-1' },
+                    '\u26A1 RAPID \xB7 \u2264 ',
+                    i.rapid_target_days,
+                    ' hari',
+                    i.status === 'done' && i.rapid_qualified ? ` \xB7 BONUS +${i.rapid_bonus_xp} XP` : ` \xB7 +${i.rapid_bonus_xp} XP`,
+                  ),
                 React.createElement('div', { className: b ? 'blink font-bold late' : '' }, 'DEADLINE: ', lbl(i.deadline)),
                 React.createElement(
                   'div',
@@ -553,13 +562,31 @@ function Board({ me: a, refresh: t, logout: s }) {
     h && React.createElement('div', { className: 'toast h text-[10px] p-3 fixed bottom-3 left-3 right-3 sm:left-auto z-10 sm:max-w-xs' }, '\u2605 ', h),
   );
 }
+const THEME_KEY = 'studytask-theme';
+const getInitialTheme = () => {
+  const saved = window.localStorage.getItem(THEME_KEY);
+  return saved === 'light' || saved === 'dark' ? saved : window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+};
+function ThemeToggle({ theme: a, onToggle: t }) {
+  const light = a === 'light';
+  return React.createElement(
+    'button',
+    { className: 'theme-toggle', type: 'button', onClick: t, 'aria-label': `Aktifkan mode ${light ? 'gelap' : 'terang'}`, 'aria-pressed': light },
+    React.createElement('span', { 'aria-hidden': 'true' }, light ? '\u2600' : '\u263E'),
+    React.createElement('span', null, light ? 'LIGHT' : 'DARK'),
+  );
+}
 function App() {
   const [a, t] = useState(null),
     [s, n] = useState(!1),
+    [theme, setTheme] = useState(getInitialTheme),
     r = async () => {
       const o = await api('GET', '/me?today=' + iso(0));
       (n(!!window.__off), t(o.ok ? o.data : !1));
     };
+  useEffect(() => {
+    (document.documentElement.dataset.theme = theme, window.localStorage.setItem(THEME_KEY, theme));
+  }, [theme]);
   useEffect(() => {
     r();
   }, []);
@@ -569,6 +596,7 @@ function App() {
   return React.createElement(
     React.Fragment,
     null,
+    React.createElement(ThemeToggle, { theme, onToggle: () => setTheme((current) => (current === 'dark' ? 'light' : 'dark')) }),
     s && React.createElement('div', { className: 'demo h text-[9px] text-center py-1 px-2' }, 'DEMO MODE \u2014 backend tidak terhubung, data hanya contoh'),
     a && a.user ? React.createElement(Board, { me: a, refresh: r, logout: d }) : React.createElement(Auth, { done: r, off: s }),
   );

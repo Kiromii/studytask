@@ -64,7 +64,9 @@ SCHEMA = [
     """CREATE TABLE IF NOT EXISTS tasks (
         id TEXT PRIMARY KEY, user_id TEXT, title TEXT NOT NULL, subject TEXT DEFAULT '',
         notes TEXT DEFAULT '', deadline TEXT DEFAULT '', priority INTEGER DEFAULT 1,
-        status TEXT DEFAULT 'todo', done_at TEXT, created_at TEXT)""",
+        status TEXT DEFAULT 'todo', done_at TEXT, created_at TEXT,
+        rapid_target_days INTEGER DEFAULT 0, rapid_bonus_xp INTEGER DEFAULT 0,
+        rapid_qualified INTEGER DEFAULT 0)""",
     "CREATE TABLE IF NOT EXISTS activity (user_id TEXT, day TEXT, PRIMARY KEY (user_id, day))",
     "CREATE TABLE IF NOT EXISTS badges (user_id TEXT, code TEXT, PRIMARY KEY (user_id, code))",
     """CREATE TABLE IF NOT EXISTS friend_requests (
@@ -90,7 +92,13 @@ for sql in SCHEMA:
     with db.begin() as c:
         c.execute(text(sql))
 # migrasi untuk tabel tasks versi lama (gagal = kolom sudah ada, aman diabaikan)
-for sql in ("ALTER TABLE tasks ADD COLUMN user_id TEXT", "ALTER TABLE tasks ADD COLUMN done_at TEXT"):
+for sql in (
+    "ALTER TABLE tasks ADD COLUMN user_id TEXT",
+    "ALTER TABLE tasks ADD COLUMN done_at TEXT",
+    "ALTER TABLE tasks ADD COLUMN rapid_target_days INTEGER DEFAULT 0",
+    "ALTER TABLE tasks ADD COLUMN rapid_bonus_xp INTEGER DEFAULT 0",
+    "ALTER TABLE tasks ADD COLUMN rapid_qualified INTEGER DEFAULT 0",
+):
     try:
         with db.begin() as c:
             c.execute(text(sql))
@@ -189,6 +197,11 @@ def stats(uid, today):
             return c.execute(text(sql), {"u": uid}).scalar() or 0
         days = [r[0] for r in c.execute(text("SELECT day FROM activity WHERE user_id=:u"), {"u": uid})]
         cur, best = streaks(days, today)
+        xp = c.execute(text("""
+            SELECT COALESCE(SUM(priority * 10), 0) +
+                   COALESCE(SUM(CASE WHEN rapid_qualified=1 THEN rapid_bonus_xp ELSE 0 END), 0)
+            FROM tasks WHERE user_id=:u AND status='done'
+        """), {"u": uid}).scalar() or 0
         rules = {
             "first": n() >= 1,
             "q10": n() >= 10,
@@ -203,7 +216,7 @@ def stats(uid, today):
         new = [k for k, ok in rules.items() if ok and k not in have]
         for k in new:
             c.execute(text("INSERT INTO badges(user_id, code) VALUES(:u,:k)"), {"u": uid, "k": k})
-    return {"streak": cur, "best": best, "earned": sorted(have | set(new)), "new": new, "days": sorted(days)[-14:]}
+    return {"streak": cur, "best": best, "xp": int(xp), "earned": sorted(have | set(new)), "new": new, "days": sorted(days)[-14:]}
 
 
 @app.get("/api/me")
@@ -231,6 +244,17 @@ def clean(data):
     return out
 
 
+def rapid_plan(deadline, created_at, priority):
+    """Return the accelerated target and bonus for a newly created quest."""
+    if not DATE.fullmatch(str(deadline or "")):
+        return 0, 0
+    remaining = (date.fromisoformat(deadline) - date.fromisoformat(created_at[:10])).days
+    if remaining < 2:
+        return 0, 0
+    target_days = max(1, remaining // 2)
+    return target_days, max(5, int(priority) * 5)
+
+
 @app.get("/api/tasks")
 @auth
 def list_tasks():
@@ -246,7 +270,10 @@ def create_task():
     d = clean(request.get_json(force=True))
     if not str(d.get("title", "")).strip():
         return jsonify(error="title wajib diisi"), 400
-    d.update(id=uuid.uuid4().hex, user_id=g.uid, created_at=datetime.now().isoformat())
+    created_at = datetime.now().isoformat()
+    target_days, bonus_xp = rapid_plan(d.get("deadline"), created_at, d.get("priority", 1))
+    d.update(id=uuid.uuid4().hex, user_id=g.uid, created_at=created_at,
+             rapid_target_days=target_days, rapid_bonus_xp=bonus_xp, rapid_qualified=0)
     cols, vals = ",".join(d), ",".join(":" + k for k in d)
     with db.begin() as c:
         c.execute(text(f"INSERT INTO tasks ({cols}) VALUES ({vals})"), d)
@@ -261,10 +288,32 @@ def update_task(tid):
         return jsonify(error="tidak ada data"), 400
     sets = ",".join(f"{k}=:{k}" for k in d)
     with db.begin() as c:
+        current = c.execute(text("""
+            SELECT created_at, deadline, priority, status, rapid_target_days
+            FROM tasks WHERE id=:id AND user_id=:u
+        """), {"id": tid, "u": g.uid}).mappings().first()
+        if not current:
+            return jsonify(error="task tidak ditemukan"), 404
         r = c.execute(text(f"UPDATE tasks SET {sets} WHERE id=:id AND user_id=:u"), {**d, "id": tid, "u": g.uid})
         if r.rowcount and d.get("status") == "done" and d.get("done_at"):
+            target_days = int(current.get("rapid_target_days") or 0)
+            if target_days:
+                qualifies = date.fromisoformat(d["done_at"]) <= (
+                    date.fromisoformat(current["created_at"][:10]) + timedelta(days=target_days)
+                )
+            else:
+                qualifies = False
+            c.execute(text("""
+                UPDATE tasks SET rapid_qualified=:qualified
+                WHERE id=:id AND user_id=:u
+            """), {"qualified": int(qualifies), "id": tid, "u": g.uid})
             c.execute(text("INSERT INTO activity(user_id, day) VALUES(:u,:d) ON CONFLICT DO NOTHING"),
                       {"u": g.uid, "d": d["done_at"]})
+        elif d.get("status") and d.get("status") != "done":
+            c.execute(text("""
+                UPDATE tasks SET rapid_qualified=0
+                WHERE id=:id AND user_id=:u
+            """), {"id": tid, "u": g.uid})
     if not r.rowcount:
         return jsonify(error="task tidak ditemukan"), 404
     return jsonify(ok=True)
